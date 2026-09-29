@@ -1,0 +1,26 @@
+{
+  "name": "real-time-oee-platform",
+  "version": "1.0.0",
+  "description": "Real-Time OEE Monitoring & Predictive Maintenance Platform (MERN + Socket.IO)",
+  "scripts": {
+    "install:backend": "cd 03-backend-code && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "seed": "cd 03-backend-code && npm run seed",
+    "backend": "cd 03-backend-code && node server.js",
+    "frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd 03-backend-code && npm start",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "oee",
+    "manufacturing",
+    "predictive-maintenance",
+    "mern",
+    "socket.io",
+    "react"
+  ],
+  "author": "Harish Padmavel S B (310624205081)",
+  "license": "ISC"
+}
