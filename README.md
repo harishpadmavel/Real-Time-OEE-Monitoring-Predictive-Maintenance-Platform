@@ -1,7 +1,5 @@
 # Real-Time OEE Monitoring & Predictive Maintenance Platform
-### Easwari Engineering College — Review 1
-**Presented by:** Harish Padmavel S B (310624205081), Information Technology  
-**Guide:** Mrs. Sai Lakshmi  
+
 
 A full-stack, industrial-grade MERN + Socket.IO platform for monitoring Overall Equipment Effectiveness (OEE) and predicting machine breakdowns across an automotive parts manufacturing line.
 

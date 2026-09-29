@@ -3,8 +3,7 @@ title FORGEPOINT - Real-Time OEE Platform
 color 0E
 echo ============================================================
 echo   FORGEPOINT: Real-Time OEE Monitoring & Predictive Maint.
-echo   Easwari Engineering College - Information Technology
-echo   Presented by: Harish Padmavel S B (310624205081)
+
 echo ============================================================
 echo.
 
