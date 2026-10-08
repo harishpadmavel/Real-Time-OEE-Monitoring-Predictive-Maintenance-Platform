@@ -19,17 +19,21 @@ export const ROLE_CONFIG = {
 };
 
 export function AuthProvider({ children }) {
+  // Start unauthenticated — the login page will be shown
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('oee_user');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { /* ignore */ }
     }
-    return DEMO_USERS[4]; // Default: Admin User
+    return null;
   });
 
   const [token, setToken] = useState(() => localStorage.getItem('oee_token') || '');
+  const [loginError, setLoginError] = useState('');
 
-  // Perform backend login to fetch real JWT token
+  const isAuthenticated = !!user;
+
+  // Perform backend login to fetch a real JWT token
   const authenticateWithBackend = async (demoUser) => {
     try {
       const res = await fetch('/api/auth/login', {
@@ -48,9 +52,79 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    localStorage.setItem('oee_user', JSON.stringify(user));
-    authenticateWithBackend(user);
+    if (user) {
+      localStorage.setItem('oee_user', JSON.stringify(user));
+    }
   }, [user]);
+
+  // Login with email + password — checks demo users first, then real backend
+  const loginWithCredentials = async (email, password) => {
+    setLoginError('');
+    const trimEmail = email.trim().toLowerCase();
+
+    // Match against demo users first
+    const demoMatch = DEMO_USERS.find(
+      (u) => u.email.toLowerCase() === trimEmail && u.password === password
+    );
+    if (demoMatch) {
+      setUser(demoMatch);
+      await authenticateWithBackend(demoMatch);
+      return;
+    }
+
+    // Fall through to real backend
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimEmail, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.token) {
+        setToken(data.token);
+        localStorage.setItem('oee_token', data.token);
+        const userObj = data.user || { email: trimEmail, name: trimEmail, role: 'OPERATOR' };
+        setUser(userObj);
+        localStorage.setItem('oee_user', JSON.stringify(userObj));
+      } else {
+        throw new Error(data.message || 'Invalid email or password.');
+      }
+    } catch (err) {
+      const msg = err.message || 'Login failed. Please try again.';
+      setLoginError(msg);
+      throw new Error(msg);
+    }
+  };
+
+  // Register a new account via backend
+  const registerUser = async ({ name, email, password, role }) => {
+    setLoginError('');
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || 'Registration failed.');
+      }
+      return data;
+    } catch (err) {
+      const msg = err.message || 'Registration failed. Please try again.';
+      setLoginError(msg);
+      throw new Error(msg);
+    }
+  };
+
+  // Logout — clears all auth state and storage
+  const logout = () => {
+    setUser(null);
+    setToken('');
+    setLoginError('');
+    localStorage.removeItem('oee_user');
+    localStorage.removeItem('oee_token');
+  };
 
   const switchDemoUser = (role) => {
     const target = DEMO_USERS.find((u) => u.role === role);
@@ -65,7 +139,11 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, switchDemoUser, hasRole, DEMO_USERS, ROLE_CONFIG }}>
+    <AuthContext.Provider value={{
+      user, token, isAuthenticated,
+      loginWithCredentials, registerUser, logout, loginError,
+      switchDemoUser, hasRole, DEMO_USERS, ROLE_CONFIG,
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import LogDowntimeModal from './components/LogDowntimeModal';
 import CriticalAlertToast from './components/CriticalAlertToast';
 
+import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import MachinesPage from './pages/MachinesPage';
 import DowntimePage from './pages/DowntimePage';
@@ -17,8 +18,13 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 
 function MainApp() {
-  const { user, token } = useAuth();
+  const { user, token, isAuthenticated, logout } = useAuth();
   const { socket } = useSocket();
+
+  // Show login page when not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);

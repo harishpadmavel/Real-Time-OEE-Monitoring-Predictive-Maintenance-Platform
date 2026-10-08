@@ -4,7 +4,7 @@ import { useSocket } from '../context/SocketContext';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Header({ onToggleSidebar, onSelectPage }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { isConnected } = useSocket();
   const { theme, toggleTheme } = useTheme();
   const [timeStr, setTimeStr] = useState('');
@@ -109,6 +109,43 @@ export default function Header({ onToggleSidebar, onSelectPage }) {
               <span className="user-chip-name">{user?.name}</span>
               <span className="user-chip-role">{user?.role}</span>
             </span>
+          </button>
+
+          {/* ── Logout ── */}
+          <button
+            id="logout-btn"
+            onClick={logout}
+            title="Sign out"
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '10px',
+              border: '1px solid var(--steel)',
+              background: 'var(--panel-2)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+              flexShrink: 0,
+              transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(230,72,60,0.12)';
+              e.currentTarget.style.color = 'var(--red)';
+              e.currentTarget.style.borderColor = 'rgba(230,72,60,0.35)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--panel-2)';
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.borderColor = 'var(--steel)';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
           </button>
         </div>
       </header>
