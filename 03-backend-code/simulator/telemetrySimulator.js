@@ -1,5 +1,6 @@
 const Machine = require("../models/Machine");
 const DowntimeLog = require("../models/DowntimeLog");
+const ShiftSession = require("../models/ShiftSession");
 const { calculateOEE, classifyOEE } = require("../utils/calculateOEE");
 
 let isRunning = true;
@@ -17,8 +18,14 @@ async function tick() {
     const machines = await Machine.find();
     if (!machines || machines.length === 0) return;
 
-    // Pick 1-2 random machines to update production counts
-    const activeMachines = machines.filter((m) => m.status === "RUNNING");
+    // Check for machines with an active operator shift session to prevent double-counting manual entries
+    const activeSessions = await ShiftSession.find({ endTime: null }).select("machine");
+    const mannedMachineIds = new Set(activeSessions.map((s) => s.machine.toString()));
+
+    // Pick 1-2 random unmanned running machines to update production counts
+    const activeMachines = machines.filter(
+      (m) => m.status === "RUNNING" && !mannedMachineIds.has(m._id.toString())
+    );
     if (activeMachines.length > 0) {
       const targetMachine = activeMachines[Math.floor(Math.random() * activeMachines.length)];
       
