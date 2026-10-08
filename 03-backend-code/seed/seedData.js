@@ -79,13 +79,9 @@ const machines = [
   },
 ];
 
-const users = [
-  { name: "Admin User", email: "admin@oee.local", password: "admin123", role: "ADMIN" },
-  { name: "Line Supervisor", email: "supervisor@oee.local", password: "super123", role: "SUPERVISOR", assignedLineId: "LINE-A" },
-  { name: "Shop Operator", email: "operator@oee.local", password: "oper123", role: "OPERATOR", assignedLineId: "LINE-A" },
-  { name: "Maintenance Tech", email: "maintenance@oee.local", password: "maint123", role: "MAINTENANCE" },
-  { name: "Plant Manager", email: "manager@oee.local", password: "manager123", role: "MANAGER" },
-];
+const ShiftSession = require("../models/ShiftSession");
+const MaintenanceRequest = require("../models/MaintenanceRequest");
+const HandoverNote = require("../models/HandoverNote");
 
 async function seed() {
   await connectDB();
@@ -94,9 +90,35 @@ async function seed() {
   await User.deleteMany({});
   await DowntimeLog.deleteMany({});
   await ProductionLog.deleteMany({});
+  await ShiftSession.deleteMany({});
+  await MaintenanceRequest.deleteMany({});
+  await HandoverNote.deleteMany({});
 
   const createdMachines = await Machine.insertMany(machines);
   console.log(`Inserted ${createdMachines.length} machines.`);
+
+  const users = [
+    { name: "Admin User", email: "admin@oee.local", password: "admin123", role: "ADMIN" },
+    { name: "Line Supervisor", email: "supervisor@oee.local", password: "super123", role: "SUPERVISOR", assignedLineId: "LINE-A" },
+    {
+      name: "Shop Operator",
+      email: "operator@oee.local",
+      password: "oper123",
+      role: "OPERATOR",
+      assignedLineId: "LINE-A",
+      assignedMachines: [createdMachines[0]._id], // CNC Machine 1
+    },
+    {
+      name: "Shop Operator 2",
+      email: "operator2@oee.local",
+      password: "oper123",
+      role: "OPERATOR",
+      assignedLineId: "LINE-A",
+      assignedMachines: [createdMachines[1]._id], // Stamping Press 1
+    },
+    { name: "Maintenance Tech", email: "maintenance@oee.local", password: "maint123", role: "MAINTENANCE" },
+    { name: "Plant Manager", email: "manager@oee.local", password: "manager123", role: "MANAGER" },
+  ];
 
   const createdUsers = [];
   for (const u of users) {
