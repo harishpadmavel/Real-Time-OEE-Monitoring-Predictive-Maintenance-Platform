@@ -1,4 +1,5 @@
 import React from 'react';
+import MaintenanceRequestPanel from '../components/MaintenanceRequestPanel';
 
 export default function AlertsPage({ alerts = [] }) {
   return (
@@ -8,8 +9,11 @@ export default function AlertsPage({ alerts = [] }) {
         Algorithmic trend detection identifying equipment degradation before catastrophic failure occurs.
       </p>
 
+      {/* Maintenance Request Panel for Responders */}
+      <MaintenanceRequestPanel />
+
       {/* Algorithm explanation banner */}
-      <div className="panel" style={{ marginBottom: '20px', borderLeft: '4px solid var(--amber)' }}>
+      <div className="panel" style={{ marginTop: '24px', marginBottom: '20px', borderLeft: '4px solid var(--amber)' }}>
         <h2 style={{ fontSize: '13.5px', marginBottom: '8px' }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           PREDICTIVE MAINTENANCE LOGIC (REVIEW / VIVA EXPLANATION)

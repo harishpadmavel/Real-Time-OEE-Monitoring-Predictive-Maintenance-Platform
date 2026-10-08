@@ -46,6 +46,31 @@ export function SocketProvider({ children }) {
       addToast(`✔ DOWNTIME RESOLVED: ${name} back to RUNNING`, 'info');
     });
 
+    s.on('maintenanceRequestCreated', (data) => {
+      const name = data.machine?.name || 'Machine';
+      const isHigh = data.priority === 'HIGH';
+      addToast(
+        `${isHigh ? '🚨' : '⚠️'} [${data.priority}] CALL FOR ${data.target}: ${name} — ${data.description}`,
+        isHigh ? 'alert' : 'warn'
+      );
+    });
+
+    s.on('maintenanceRequestUpdated', (data) => {
+      const name = data.machine?.name || 'Machine';
+      addToast(`✔ Request for ${name} is now ${data.status}`, 'info');
+    });
+
+    s.on('shiftStarted', (data) => {
+      const name = data.machine?.name || 'Machine';
+      addToast(`▶ Shift started on ${name} (${data.shiftName})`, 'info');
+    });
+
+    s.on('shiftEnded', (data) => {
+      const name = data.machine?.name || 'Machine';
+      const oee = Math.round(data.summary?.oee || 0);
+      addToast(`🏁 Shift ended on ${name} (Shift OEE: ${oee}%)`, 'info');
+    });
+
     setSocket(s);
 
     return () => {
