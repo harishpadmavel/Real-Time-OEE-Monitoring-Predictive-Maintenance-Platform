@@ -54,15 +54,16 @@ Original standalone static HTML mockup prototype for reference.
 
 ---
 
-## 👥 Demo Logins
+## 👥 Demo Logins & Role Access Matrix
 
-| Role | Email | Password | Allowed Access |
+| Role | Email | Password | Allowed Access & Scope |
 |---|---|---|---|
-| **Operator** | `operator@oee.local` | `oper123` | Assigned station(s) only — log downtime, update status |
-| **Supervisor** | `supervisor@oee.local` | `super123` | All machines on Line-A, acknowledge alerts |
-| **Maintenance** | `maintenance@oee.local` | `maint123` | Machine health history, predictive alerts, log repairs |
-| **Plant Manager** | `manager@oee.local` | `manager123` | All lines/shifts, reports, trend charts |
-| **Admin** | `admin@oee.local` | `admin123` | Full access — manage users, machines, simulator |
+| **Operator 1** | `operator@oee.local` | `oper123` | **Assigned machine (CNC Machine 1)**: My Machine console (touch START/STOP/IDLE), live downtime tracking with mm:ss timer & Back Up resolution, manual production entry with reject reasons, Start/End Shift sessions with OEE summaries, Maintenance/Supervisor calls, Handover notes, Activity feed |
+| **Operator 2** | `operator2@oee.local` | `oper123` | **Assigned machine (Stamping Press 1)**: Same full operator module scoped to Stamping Press 1 |
+| **Supervisor** | `supervisor@oee.local` | `super123` | All machines on Line-A, acknowledge/resolve maintenance requests, acknowledge predictive alerts |
+| **Maintenance** | `maintenance@oee.local` | `maint123` | Equipment health diagnostics, acknowledge/resolve operator assistance calls, predictive alerts |
+| **Plant Manager** | `manager@oee.local` | `manager123` | All lines/shifts, reports, trend charts, user registers |
+| **Admin** | `admin@oee.local` | `admin123` | Full root access — manage users, machines, simulator controls |
 
 ---
 

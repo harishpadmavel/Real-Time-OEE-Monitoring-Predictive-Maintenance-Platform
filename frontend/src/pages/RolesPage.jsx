@@ -39,8 +39,8 @@ export default function RolesPage({ users = [] }) {
                   </span>
                 </td>
                 <td>Assigned machine station(s) only</td>
-                <td>Log stoppage reasons, update station run/idle status, submit shift handover notes</td>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: 'var(--text-muted)' }}>Station Read & Downtime Write</td>
+                <td>My Machine console (Start/Stop/Idle), live downtime timer & resolution, manual production entry (good & reject units), start/end shift sessions with OEE summaries, maintenance & supervisor dispatch calls, shift handover notes, activity audit feed</td>
+                <td style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px', color: 'var(--text-muted)' }}>Assigned Machine Read/Write, Shifts, Production, Downtime, Assistance Calls, Handover Notes</td>
               </tr>
               <tr>
                 <td>
