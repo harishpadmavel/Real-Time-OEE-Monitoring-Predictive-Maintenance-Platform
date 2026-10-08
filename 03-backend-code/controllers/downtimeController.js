@@ -23,6 +23,17 @@ async function getDowntimeLogs(req, res) {
 // POST /api/downtime - operator logs a new downtime event (machine just stopped)
 async function startDowntime(req, res) {
   const { machineId, reason, notes } = req.body;
+  if (!machineId) return res.status(400).json({ message: "machineId is required" });
+  if (!reason) return res.status(400).json({ message: "reason is required" });
+
+  // Prevent starting a second open downtime on the same machine
+  const openDowntime = await DowntimeLog.findOne({ machine: machineId, endTime: null });
+  if (openDowntime) {
+    return res.status(409).json({
+      message: "An open downtime event already exists on this machine. Resolve it before starting another.",
+      openDowntime,
+    });
+  }
 
   const log = await DowntimeLog.create({
     machine: machineId,
@@ -51,6 +62,16 @@ async function startDowntime(req, res) {
 async function resolveDowntime(req, res) {
   const log = await DowntimeLog.findById(req.params.id);
   if (!log) return res.status(404).json({ message: "Downtime log not found" });
+
+  // Check operator assignment if user is an operator
+  if (req.user && req.user.role === "OPERATOR") {
+    const User = require("../models/User");
+    const dbUser = await User.findById(req.user.id).select("assignedMachines");
+    const assigned = (dbUser?.assignedMachines || []).map((m) => m.toString());
+    if (!assigned.includes(log.machine.toString())) {
+      return res.status(403).json({ message: "Forbidden: machine not in your assigned list" });
+    }
+  }
 
   log.endTime = new Date();
   log.durationMinutes = Math.max(1, Math.round((log.endTime - log.startTime) / 60000));

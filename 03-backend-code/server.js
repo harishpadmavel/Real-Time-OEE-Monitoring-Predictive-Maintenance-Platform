@@ -14,6 +14,11 @@ const downtimeRoutes = require("./routes/downtimeRoutes");
 const oeeRoutes = require("./routes/oeeRoutes");
 const userRoutes = require("./routes/userRoutes");
 const simulatorRoutes = require("./routes/simulatorRoutes");
+const shiftRoutes = require("./routes/shiftRoutes");
+const productionRoutes = require("./routes/productionRoutes");
+const maintenanceRequestRoutes = require("./routes/maintenanceRequestRoutes");
+const handoverRoutes = require("./routes/handoverRoutes");
+const activityRoutes = require("./routes/activityRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -47,6 +52,11 @@ app.use("/api/downtime", downtimeRoutes);
 app.use("/api/oee", oeeRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/simulator", simulatorRoutes);
+app.use("/api/shifts", shiftRoutes);
+app.use("/api/production", productionRoutes);
+app.use("/api/maintenance-requests", maintenanceRequestRoutes);
+app.use("/api/handover", handoverRoutes);
+app.use("/api/activity", activityRoutes);
 
 // Basic error handler
 app.use((err, req, res, next) => {

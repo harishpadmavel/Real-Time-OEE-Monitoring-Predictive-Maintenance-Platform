@@ -1,7 +1,14 @@
 const Machine = require("../models/Machine");
+const User = require("../models/User");
 
 // GET /api/machines - list all machines with live status (for the dashboard grid)
 async function getMachines(req, res) {
+  if (req.user && req.user.role === "OPERATOR") {
+    const dbUser = await User.findById(req.user.id).select("assignedMachines");
+    const assignedIds = dbUser?.assignedMachines || [];
+    const machines = await Machine.find({ _id: { $in: assignedIds } }).sort({ lineId: 1, name: 1 });
+    return res.json(machines);
+  }
   const machines = await Machine.find().sort({ lineId: 1, name: 1 });
   res.json(machines);
 }

@@ -6,10 +6,10 @@ const {
   resolveDowntime,
   getReasonsSummary,
 } = require("../controllers/downtimeController");
-const { protect } = require("../middleware/auth");
+const { protect, requireAssignedMachine } = require("../middleware/auth");
 
 router.get("/", protect, getDowntimeLogs);
-router.post("/", protect, startDowntime);
+router.post("/", protect, requireAssignedMachine, startDowntime);
 router.patch("/:id/resolve", protect, resolveDowntime);
 router.get("/reasons-summary", protect, getReasonsSummary);
 

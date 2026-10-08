@@ -19,7 +19,14 @@ async function register(req, res) {
     const user = await User.create({ name, email, password, role, assignedLineId });
     res.status(201).json({
       token: signToken(user),
-      user: { id: user._id, name: user.name, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        assignedLineId: user.assignedLineId,
+        assignedMachines: user.assignedMachines || [],
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -30,13 +37,20 @@ async function register(req, res) {
 async function login(req, res) {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate("assignedMachines");
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
     res.json({
       token: signToken(user),
-      user: { id: user._id, name: user.name, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        assignedLineId: user.assignedLineId,
+        assignedMachines: user.assignedMachines || [],
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
