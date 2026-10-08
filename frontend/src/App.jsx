@@ -17,6 +17,12 @@ import RolesPage from './pages/RolesPage';
 import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 
+import MyMachinePage from './pages/MyMachinePage';
+import MyShiftPage from './pages/MyShiftPage';
+import RequestsPage from './pages/RequestsPage';
+import HandoverPage from './pages/HandoverPage';
+import MyActivityPage from './pages/MyActivityPage';
+
 function MainApp() {
   const { user, token, isAuthenticated, logout } = useAuth();
   const { socket } = useSocket();
@@ -26,9 +32,19 @@ function MainApp() {
     return <LoginPage />;
   }
 
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState(() => (user?.role === 'OPERATOR' ? 'myMachine' : 'dashboard'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+
+  // Guard: redirect operators away from restricted admin/manager pages
+  useEffect(() => {
+    if (user?.role === 'OPERATOR') {
+      const restricted = ['machines', 'downtime', 'alerts', 'reports', 'roles', 'settings'];
+      if (restricted.includes(currentPage)) {
+        setCurrentPage('myMachine');
+      }
+    }
+  }, [user?.role, currentPage]);
 
   const [machines, setMachines] = useState([]);
   const [oeeMap, setOeeMap] = useState({});
@@ -333,6 +349,35 @@ function MainApp() {
               onToggleSimulator={handleToggleSimulator}
               onTriggerAnomaly={handleTriggerAnomaly}
             />
+          )}
+
+          {/* Operator Console Pages */}
+          {currentPage === 'myMachine' && (
+            <MyMachinePage
+              machines={machines}
+              oeeMap={oeeMap}
+              downtimeLogs={downtimeLogs}
+              onUpdateStatus={handleUpdateStatus}
+              onResolveDowntime={handleResolveDowntime}
+              onLogDowntime={handleLogDowntime}
+              onOpenShiftPage={() => setCurrentPage('myShift')}
+            />
+          )}
+
+          {currentPage === 'myShift' && (
+            <MyShiftPage machines={machines} />
+          )}
+
+          {currentPage === 'requests' && (
+            <RequestsPage machines={machines} />
+          )}
+
+          {currentPage === 'handover' && (
+            <HandoverPage machines={machines} />
+          )}
+
+          {currentPage === 'myActivity' && (
+            <MyActivityPage />
           )}
 
           {currentPage === 'profile' && <ProfilePage allUsers={allUsers} />}
