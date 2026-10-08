@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
       default: "OPERATOR",
     },
     assignedLineId: { type: String }, // which line this operator/supervisor is tied to
+    assignedMachines: [{ type: mongoose.Schema.Types.ObjectId, ref: "Machine" }], // machines this operator can access
   },
   { timestamps: true }
 );
