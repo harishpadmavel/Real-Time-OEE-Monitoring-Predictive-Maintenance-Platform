@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import ShiftSummaryModal from '../components/ShiftSummaryModal';
+import { apiUrl } from '../utils/api';
 
 export default function MyShiftPage({ machines = [] }) {
   const { user } = useAuth();
@@ -41,7 +42,7 @@ export default function MyShiftPage({ machines = [] }) {
 
   const fetchActiveShift = useCallback(async () => {
     try {
-      const res = await fetch('/api/shifts/active', {
+      const res = await fetch(apiUrl('/api/shifts/active'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
       });
       if (res.ok) {
@@ -55,7 +56,7 @@ export default function MyShiftPage({ machines = [] }) {
 
   const fetchShiftHistory = useCallback(async () => {
     try {
-      const res = await fetch('/api/shifts/my', {
+      const res = await fetch(apiUrl('/api/shifts/my'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
       });
       if (res.ok) {
@@ -71,7 +72,7 @@ export default function MyShiftPage({ machines = [] }) {
   const fetchLatestHandover = useCallback(async (mId) => {
     if (!mId) return;
     try {
-      const res = await fetch(`/api/handover/latest?machineId=${mId}`, {
+      const res = await fetch(apiUrl(`/api/handover/latest?machineId=${mId}`), {
         headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
       });
       if (res.ok) {
@@ -105,7 +106,7 @@ export default function MyShiftPage({ machines = [] }) {
 
     setActionLoading(true);
     try {
-      const res = await fetch('/api/shifts/start', {
+      const res = await fetch(apiUrl('/api/shifts/start'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -140,7 +141,7 @@ export default function MyShiftPage({ machines = [] }) {
     try {
       // If handover note is provided, post it first
       if (handoverText.trim()) {
-        await fetch('/api/handover', {
+        await fetch(apiUrl('/api/handover'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ export default function MyShiftPage({ machines = [] }) {
       }
 
       // End shift
-      const res = await fetch(`/api/shifts/${activeShift._id}/end`, {
+      const res = await fetch(apiUrl(`/api/shifts/${activeShift._id}/end`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

@@ -7,7 +7,7 @@ import React, {
 
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  'https://oee-backend-pjbu.onrender.com'
+  'https://oee-backend-pjpu.onrender.com'
 ).replace(/\/+$/, '');
 
 const AuthContext = createContext();

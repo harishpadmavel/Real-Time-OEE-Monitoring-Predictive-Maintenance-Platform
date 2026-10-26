@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { apiUrl } from '../utils/api';
 
 export default function RequestsPage({ machines = [] }) {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export default function RequestsPage({ machines = [] }) {
 
   const fetchRequests = useCallback(async () => {
     try {
-      const res = await fetch('/api/maintenance-requests', {
+      const res = await fetch(apiUrl('/api/maintenance-requests'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
       });
       if (res.ok) {
@@ -91,7 +92,7 @@ export default function RequestsPage({ machines = [] }) {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/maintenance-requests', {
+      const res = await fetch(apiUrl('/api/maintenance-requests'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

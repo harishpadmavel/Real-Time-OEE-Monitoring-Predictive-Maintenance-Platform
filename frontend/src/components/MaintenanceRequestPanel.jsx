@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../utils/api';
 
 export default function MaintenanceRequestPanel() {
   const { user } = useAuth();
@@ -11,7 +12,7 @@ export default function MaintenanceRequestPanel() {
 
   const fetchRequests = useCallback(async () => {
     try {
-      const res = await fetch('/api/maintenance-requests', {
+      const res = await fetch(apiUrl('/api/maintenance-requests'), {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}`,
         },
@@ -56,7 +57,7 @@ export default function MaintenanceRequestPanel() {
   const handleAction = async (requestId, action) => {
     setActionLoadingId(requestId);
     try {
-      const res = await fetch(`/api/maintenance-requests/${requestId}/${action}`, {
+      const res = await fetch(apiUrl(`/api/maintenance-requests/${requestId}/${action}`), {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}`,

@@ -4,6 +4,7 @@ import { useSocket } from '../context/SocketContext';
 import DowntimeTimerBanner from '../components/DowntimeTimerBanner';
 import ProductionEntryForm from '../components/ProductionEntryForm';
 import LogDowntimeModal from '../components/LogDowntimeModal';
+import { apiUrl } from '../utils/api';
 
 export default function MyMachinePage({
   machines = [],
@@ -51,7 +52,7 @@ export default function MyMachinePage({
   // Fetch active shift session for target progress
   const fetchActiveShift = useCallback(async () => {
     try {
-      const res = await fetch('/api/shifts/active', {
+      const res = await fetch(apiUrl('/api/shifts/active'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
       });
       if (res.ok) {

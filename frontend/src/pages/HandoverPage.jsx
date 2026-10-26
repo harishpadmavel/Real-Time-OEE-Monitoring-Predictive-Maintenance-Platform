@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../utils/api';
 
 export default function HandoverPage({ machines = [] }) {
   const { user } = useAuth();
@@ -31,10 +32,10 @@ export default function HandoverPage({ machines = [] }) {
     setLoading(true);
     try {
       const [latestRes, historyRes] = await Promise.all([
-        fetch(`/api/handover/latest?machineId=${mId}`, {
+        fetch(apiUrl(`/api/handover/latest?machineId=${mId}`), {
           headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
         }),
-        fetch(`/api/handover/history?machineId=${mId}`, {
+        fetch(apiUrl(`/api/handover/history?machineId=${mId}`), {
           headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
         }),
       ]);
@@ -72,7 +73,7 @@ export default function HandoverPage({ machines = [] }) {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/handover', {
+      const res = await fetch(apiUrl('/api/handover'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

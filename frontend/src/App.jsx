@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider, useSocket } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { apiUrl } from './utils/api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LogDowntimeModal from './components/LogDowntimeModal';
@@ -65,14 +66,14 @@ function MainApp() {
   const refreshAllData = useCallback(async () => {
     try {
       // Fetch machines
-      const mRes = await fetch('/api/machines', { headers: getHeaders() });
+      const mRes = await fetch(apiUrl('/api/machines'), { headers: getHeaders() });
       if (mRes.ok) {
         const mData = await mRes.json();
         setMachines(mData);
       }
 
       // Fetch OEE
-      const oeeRes = await fetch('/api/oee', { headers: getHeaders() });
+      const oeeRes = await fetch(apiUrl('/api/oee'), { headers: getHeaders() });
       if (oeeRes.ok) {
         const oeeData = await oeeRes.json();
         const map = {};
@@ -88,35 +89,35 @@ function MainApp() {
       }
 
       // Fetch downtime logs
-      const dtRes = await fetch('/api/downtime', { headers: getHeaders() });
+      const dtRes = await fetch(apiUrl('/api/downtime'), { headers: getHeaders() });
       if (dtRes.ok) {
         const dtData = await dtRes.json();
         setDowntimeLogs(dtData);
       }
 
       // Fetch alerts
-      const alRes = await fetch('/api/oee/predictive-alerts', { headers: getHeaders() });
+      const alRes = await fetch(apiUrl('/api/oee/predictive-alerts'), { headers: getHeaders() });
       if (alRes.ok) {
         const alData = await alRes.json();
         setAlerts(alData);
       }
 
       // Fetch trends
-      const trRes = await fetch('/api/oee/trends/7day', { headers: getHeaders() });
+      const trRes = await fetch(apiUrl('/api/oee/trends/7day'), { headers: getHeaders() });
       if (trRes.ok) {
         const trData = await trRes.json();
         setTrendsData(trData);
       }
 
       // Fetch users
-      const uRes = await fetch('/api/users', { headers: getHeaders() });
+      const uRes = await fetch(apiUrl('/api/users'), { headers: getHeaders() });
       if (uRes.ok) {
         const uData = await uRes.json();
         setAllUsers(uData);
       }
 
       // Fetch simulator status
-      const simRes = await fetch('/api/simulator/status');
+      const simRes = await fetch(apiUrl('/api/simulator/status'));
       if (simRes.ok) {
         const simData = await simRes.json();
         setSimulatorRunning(simData.isRunning);
@@ -202,7 +203,7 @@ function MainApp() {
 
   // Actions
   const handleLogDowntime = async ({ machineId, reason, notes }) => {
-    const res = await fetch('/api/downtime', {
+    const res = await fetch(apiUrl('/api/downtime'), {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ machineId, reason, notes }),
@@ -217,7 +218,7 @@ function MainApp() {
   };
 
   const handleResolveDowntime = async (logId) => {
-    const res = await fetch(`/api/downtime/${logId}/resolve`, {
+    const res = await fetch(apiUrl(`/api/downtime/${logId}/resolve`), {
       method: 'PATCH',
       headers: getHeaders(),
     });
@@ -236,7 +237,7 @@ function MainApp() {
   };
 
   const handleUpdateStatus = async (machineId, status) => {
-    const res = await fetch(`/api/machines/${machineId}/status`, {
+    const res = await fetch(apiUrl(`/api/machines/${machineId}/status`), {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify({ status }),
@@ -250,7 +251,7 @@ function MainApp() {
   };
 
   const handleAddMachine = async (machineData) => {
-    const res = await fetch('/api/machines', {
+    const res = await fetch(apiUrl('/api/machines'), {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(machineData),
@@ -265,7 +266,7 @@ function MainApp() {
   };
 
   const handleToggleSimulator = async () => {
-    const res = await fetch('/api/simulator/toggle', {
+    const res = await fetch(apiUrl('/api/simulator/toggle'), {
       method: 'POST',
       headers: getHeaders(),
     });
@@ -276,7 +277,7 @@ function MainApp() {
   };
 
   const handleTriggerAnomaly = async () => {
-    await fetch('/api/simulator/trigger-anomaly', {
+    await fetch(apiUrl('/api/simulator/trigger-anomaly'), {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ reason: 'BREAKDOWN', notes: 'Simulated review demo breakdown' }),

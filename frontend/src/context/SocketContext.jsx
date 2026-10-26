@@ -17,10 +17,13 @@ export function SocketProvider({ children }) {
   };
 
   useEffect(() => {
-    // Connect to backend (environment variable, localhost:5001 for dev, or current origin)
+    // In production the frontend is on Vercel but Socket.IO must connect to Render.
+    // VITE_SOCKET_URL lets Vercel env vars override the hard-coded default.
     const socketUrl =
       import.meta.env.VITE_SOCKET_URL ||
-      (window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin);
+      (window.location.hostname === 'localhost'
+        ? 'http://localhost:5001'
+        : 'https://oee-backend-pjpu.onrender.com');
 
     const s = io(socketUrl, {
       transports: ['websocket', 'polling'],

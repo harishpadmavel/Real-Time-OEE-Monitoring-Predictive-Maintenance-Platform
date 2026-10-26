@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../utils/api';
 
 export default function MyActivityPage() {
   const { user } = useAuth();
@@ -9,7 +10,7 @@ export default function MyActivityPage() {
 
   const fetchActivity = useCallback(async () => {
     try {
-      const res = await fetch('/api/activity/my', {
+      const res = await fetch(apiUrl('/api/activity/my'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('oee_token') || ''}` },
       });
       if (res.ok) {

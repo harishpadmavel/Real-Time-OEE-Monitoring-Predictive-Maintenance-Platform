@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ROLE_CONFIG } from '../context/AuthContext';
 import { useAuth } from '../context/AuthContext';
+import { apiUrl } from '../utils/api';
 
 const ROLES = ['OPERATOR', 'SUPERVISOR', 'MAINTENANCE', 'MANAGER', 'ADMIN'];
 
@@ -41,7 +42,7 @@ function CreateUserModal({ onClose, onCreated, token }) {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch(apiUrl('/api/users'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -296,7 +297,7 @@ function DeleteConfirmModal({ user, onClose, onDeleted, token }) {
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/users/${user._id}`, {
+      const res = await fetch(apiUrl(`/api/users/${user._id}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

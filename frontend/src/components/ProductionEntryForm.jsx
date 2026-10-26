@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiUrl } from '../utils/api';
 
 const REJECT_REASONS = [
   { value: 'DIMENSION_OUT_OF_SPEC', label: 'Dimension Out of Spec' },
@@ -37,7 +38,7 @@ export default function ProductionEntryForm({ machineId, shiftSessionId, onSubmi
 
     setLoading(true);
     try {
-      const res = await fetch('/api/production', {
+      const res = await fetch(apiUrl('/api/production'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
