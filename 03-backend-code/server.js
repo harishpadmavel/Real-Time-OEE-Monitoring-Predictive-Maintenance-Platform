@@ -92,9 +92,19 @@ const io = new Server(server, {
 app.set("io", io);
 registerSocketHandlers(io);
 
-// Enable CORS and explicit preflight handling before routes
+// CORS middleware runs before all API routes and parsers
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+
+// Middleware-based OPTIONS preflight handler
+// Fully compatible with Express 4 and Express 5 (avoids wildcard path-to-regexp syntax like app.options('*'))
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    // If not already ended by cors(), send 200 OK
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Health check
@@ -123,6 +133,14 @@ app.use("/api/handover", handoverRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/seed", seedRoutes);
 
+// Fallback 404 for unmatched /api routes (ensures CORS headers remain intact on 404s)
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({ message: "API endpoint not found" });
+  }
+  next();
+});
+
 // Serve static frontend build if present (e.g. Render full-stack deployment)
 const frontendDist = path.join(__dirname, "../frontend/dist");
 if (fs.existsSync(frontendDist)) {
@@ -136,8 +154,14 @@ if (fs.existsSync(frontendDist)) {
   });
 }
 
-// Basic error handler
+// Basic error handler: ensures CORS headers are attached even on 500 errors
 app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
   console.error("Server error:", err.stack);
   res.status(500).json({ message: "Server error", error: err.message });
 });
