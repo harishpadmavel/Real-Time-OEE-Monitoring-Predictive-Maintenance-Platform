@@ -3,10 +3,11 @@ const { app } = require("../03-backend-code/server");
 
 module.exports = async (req, res) => {
   try {
-    if (process.env.MONGO_URI) {
+    const hasMongo = process.env.MONGO_URI || process.env.MONGO_URL;
+    if (hasMongo) {
       await connectDB();
     } else {
-      console.warn("⚠️ MONGO_URI is not set in Vercel environment variables.");
+      console.warn("⚠️ Neither MONGO_URI nor MONGO_URL is set in Vercel environment variables.");
     }
   } catch (dbErr) {
     console.error("Database connection error in serverless handler:", dbErr.message);

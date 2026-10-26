@@ -6,7 +6,7 @@ async function connectDB() {
   if (mongoose.connection.readyState >= 1) {
     return mongoose.connection;
   }
-  const uri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/oee_platform";
+  const uri = process.env.MONGO_URI || process.env.MONGO_URL || "mongodb://127.0.0.1:27017/oee_platform";
   try {
     const conn = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,

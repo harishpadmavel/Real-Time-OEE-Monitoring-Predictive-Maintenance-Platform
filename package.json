@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Real-Time OEE Monitoring & Predictive Maintenance Platform (MERN + Socket.IO)",
   "scripts": {
+    "start": "node 03-backend-code/server.js",
     "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "install:backend": "cd 03-backend-code && npm install",
     "install:frontend": "cd frontend && npm install",

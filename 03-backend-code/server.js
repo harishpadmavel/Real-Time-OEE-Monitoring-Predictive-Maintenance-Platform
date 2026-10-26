@@ -60,6 +60,21 @@ app.use("/api/handover", handoverRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/seed", seedRoutes);
 
+const path = require("path");
+const fs = require("fs");
+
+// Serve static frontend build if present (e.g. Render full-stack deployment)
+const frontendDist = path.join(__dirname, "../frontend/dist");
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, "index.html"));
+  });
+}
+
 // Basic error handler
 app.use((err, req, res, next) => {
   console.error("Server error:", err.stack);
