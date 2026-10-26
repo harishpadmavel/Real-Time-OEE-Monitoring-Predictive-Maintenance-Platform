@@ -24,12 +24,67 @@ const handoverRoutes = require("./routes/handoverRoutes");
 const activityRoutes = require("./routes/activityRoutes");
 const seedRoutes = require("./routes/seedRoutes");
 
+// Allowed Origins for Cross-Origin Resource Sharing (CORS)
+const allowedOrigins = [
+  "https://real-time-oee-monitoring-predictive.vercel.app",
+  "https://real-time-oee-monitoring-predictive-maintenance-plat-9omuyq7zw.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "http://localhost:5000",
+  "http://localhost:5001",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5001",
+];
+
+if (process.env.CLIENT_URL) {
+  const envUrl = process.env.CLIENT_URL.trim().replace(/\/+$/, "");
+  if (!allowedOrigins.includes(envUrl)) allowedOrigins.push(envUrl);
+}
+if (process.env.FRONTEND_URL) {
+  const envUrl = process.env.FRONTEND_URL.trim().replace(/\/+$/, "");
+  if (!allowedOrigins.includes(envUrl)) allowedOrigins.push(envUrl);
+}
+
+function isOriginAllowed(origin) {
+  if (!origin) return true; // Allow non-browser clients (curl, mobile, server-to-server)
+  const cleanOrigin = origin.trim().replace(/\/+$/, "");
+  if (allowedOrigins.includes(cleanOrigin)) return true;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)) return true;
+  if (/^https:\/\/real-time-oee-monitoring-predictive.*\.vercel\.app$/.test(cleanOrigin)) return true;
+  return false;
+}
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+  optionsSuccessStatus: 200,
+};
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // allow local dev clients
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
   },
 });
 
@@ -37,7 +92,9 @@ const io = new Server(server, {
 app.set("io", io);
 registerSocketHandlers(io);
 
-app.use(cors());
+// Enable CORS and explicit preflight handling before routes
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // Health check
