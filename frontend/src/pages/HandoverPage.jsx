@@ -7,7 +7,9 @@ export default function HandoverPage({ machines = [] }) {
   const assignedMachineIds = new Set(
     (user?.assignedMachines || []).map((m) => (m._id ? m._id.toString() : m.toString()))
   );
-  const operatorMachines = machines.filter((m) => assignedMachineIds.has(m._id.toString()));
+  const operatorMachines = assignedMachineIds.size > 0
+    ? machines.filter((m) => assignedMachineIds.has(m._id.toString()))
+    : machines;
 
   const [selectedMachineId, setSelectedMachineId] = useState(operatorMachines[0]?._id || '');
   const [latestNote, setLatestNote] = useState(null);

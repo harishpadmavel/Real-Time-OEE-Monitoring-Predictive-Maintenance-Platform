@@ -270,11 +270,44 @@ export default function LoginPage() {
 
         {mode === 'login' && (
           <details className="login-demo-hint">
-            <summary>Demo credentials</summary>
+            <summary>Demo credentials (click to auto-fill)</summary>
             <div className="login-demo-grid">
-              <div><span className="login-demo-role operator">Operator</span><code>operator@oee.local</code><code>oper123</code></div>
-              <div><span className="login-demo-role supervisor">Supervisor</span><code>supervisor@oee.local</code><code>super123</code></div>
-              <div><span className="login-demo-role admin">Admin</span><code>admin@oee.local</code><code>admin123</code></div>
+              <div
+                className="login-demo-row"
+                title="Click to fill Operator credentials"
+                onClick={() => {
+                  setForm((p) => ({ ...p, email: 'operator@oee.local', password: 'oper123' }));
+                  setLocalError('');
+                }}
+              >
+                <span className="login-demo-role operator">Operator</span>
+                <code>operator@oee.local</code>
+                <code>oper123</code>
+              </div>
+              <div
+                className="login-demo-row"
+                title="Click to fill Supervisor credentials"
+                onClick={() => {
+                  setForm((p) => ({ ...p, email: 'supervisor@oee.local', password: 'super123' }));
+                  setLocalError('');
+                }}
+              >
+                <span className="login-demo-role supervisor">Supervisor</span>
+                <code>supervisor@oee.local</code>
+                <code>super123</code>
+              </div>
+              <div
+                className="login-demo-row"
+                title="Click to fill Admin credentials"
+                onClick={() => {
+                  setForm((p) => ({ ...p, email: 'admin@oee.local', password: 'admin123' }));
+                  setLocalError('');
+                }}
+              >
+                <span className="login-demo-role admin">Admin</span>
+                <code>admin@oee.local</code>
+                <code>admin123</code>
+              </div>
             </div>
           </details>
         )}

@@ -10,7 +10,9 @@ export default function MyShiftPage({ machines = [] }) {
   const assignedMachineIds = new Set(
     (user?.assignedMachines || []).map((m) => (m._id ? m._id.toString() : m.toString()))
   );
-  const operatorMachines = machines.filter((m) => assignedMachineIds.has(m._id.toString()));
+  const operatorMachines = assignedMachineIds.size > 0
+    ? machines.filter((m) => assignedMachineIds.has(m._id?.toString()))
+    : machines;
 
   const [activeShift, setActiveShift] = useState(null);
   const [shiftHistory, setShiftHistory] = useState([]);

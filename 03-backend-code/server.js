@@ -19,6 +19,7 @@ const productionRoutes = require("./routes/productionRoutes");
 const maintenanceRequestRoutes = require("./routes/maintenanceRequestRoutes");
 const handoverRoutes = require("./routes/handoverRoutes");
 const activityRoutes = require("./routes/activityRoutes");
+const seedRoutes = require("./routes/seedRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +58,7 @@ app.use("/api/production", productionRoutes);
 app.use("/api/maintenance-requests", maintenanceRequestRoutes);
 app.use("/api/handover", handoverRoutes);
 app.use("/api/activity", activityRoutes);
+app.use("/api/seed", seedRoutes);
 
 // Basic error handler
 app.use((err, req, res, next) => {

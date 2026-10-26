@@ -14,27 +14,35 @@ export default function MyMachinePage({
   onLogDowntime,
   onOpenShiftPage,
 }) {
-  const { user } = useAuth();
+  const { user, assignMachines, refreshUser } = useAuth();
   const { socket } = useSocket();
 
-  // Filter only machines assigned to this operator
+  // Filter only machines assigned to this operator, or fallback to all plant machines for full demo access
   const assignedMachineIds = new Set(
     (user?.assignedMachines || []).map((m) => (m._id ? m._id.toString() : m.toString()))
   );
 
-  const operatorMachines = machines.filter((m) =>
-    assignedMachineIds.has(m._id.toString())
-  );
+  const hasSpecificAssignments = assignedMachineIds.size > 0;
+  const operatorMachines = hasSpecificAssignments
+    ? machines.filter((m) => assignedMachineIds.has(m._id?.toString()))
+    : machines;
 
-  const [selectedMachineId, setSelectedMachineId] = useState(
-    operatorMachines[0]?._id || machines[0]?._id || ''
-  );
+  const displayMachines = operatorMachines.length > 0 ? operatorMachines : machines;
+
+  const [selectedLine, setSelectedLine] = useState('ALL');
+  const [selectedMachineId, setSelectedMachineId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignSuccess, setAssignSuccess] = useState(false);
 
   useEffect(() => {
-    if (!selectedMachineId && operatorMachines.length > 0) {
-      setSelectedMachineId(operatorMachines[0]._id);
+    if (!selectedMachineId && displayMachines.length > 0) {
+      setSelectedMachineId(displayMachines[0]._id);
     }
-  }, [operatorMachines, selectedMachineId]);
+  }, [displayMachines, selectedMachineId]);
+
+  const filteredMachines = selectedLine === 'ALL'
+    ? displayMachines
+    : displayMachines.filter((m) => m.lineId === selectedLine);
 
   const [activeShift, setActiveShift] = useState(null);
   const [isDowntimeModalOpen, setIsDowntimeModalOpen] = useState(false);
@@ -78,21 +86,47 @@ export default function MyMachinePage({
     };
   }, [socket, user]);
 
-  const machine = operatorMachines.find((m) => m._id === selectedMachineId) || operatorMachines[0];
+  const machine = displayMachines.find((m) => m._id === selectedMachineId) || filteredMachines[0] || displayMachines[0];
 
   // Find active downtime log for this machine
   const activeDowntime = downtimeLogs.find(
     (l) => (l.machine?._id === machine?._id || l.machine === machine?._id) && !l.endTime
   );
 
+  const handleAssignAll = async () => {
+    setAssigning(true);
+    try {
+      if (assignMachines) {
+        await assignMachines([], true);
+      }
+      if (refreshUser) {
+        await refreshUser();
+      }
+      setAssignSuccess(true);
+      setTimeout(() => setAssignSuccess(false), 3000);
+    } catch (err) {
+      console.error('Assign error:', err);
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   if (!machine) {
     return (
-      <div className="panel" style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <div style={{ fontSize: '36px', marginBottom: '12px' }}>⚠️</div>
-        <div className="page-title" style={{ fontSize: '20px' }}>No Assigned Machine Station</div>
-        <p style={{ color: 'var(--text-muted)', maxWidth: '460px', margin: '0 auto 16px' }}>
-          Your operator account currently has no machine assigned. Contact your shop supervisor or plant administrator to assign your production station.
+      <div className="panel" style={{ textAlign: 'center', padding: '56px 24px', maxWidth: '640px', margin: '40px auto' }}>
+        <div style={{ fontSize: '44px', marginBottom: '16px' }}>🏭</div>
+        <div className="page-title" style={{ fontSize: '22px', marginBottom: '8px' }}>Assign Machine Stations</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: '1.6', margin: '0 auto 24px' }}>
+          Grant full access to all 16 plant production stations across Lines A, B, C, and D to begin monitoring real-time telemetry, logging downtime, and tracking OEE.
         </p>
+        <button
+          className="btn btn-primary"
+          onClick={handleAssignAll}
+          disabled={assigning}
+          style={{ padding: '12px 28px', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          {assigning ? 'Assigning Stations...' : '⚡ Assign All 16 Machine Stations (Full Access)'}
+        </button>
       </div>
     );
   }
@@ -126,21 +160,110 @@ export default function MyMachinePage({
     }
   };
 
+  const lines = ['ALL', 'LINE-A', 'LINE-B', 'LINE-C', 'LINE-D'];
+
   return (
     <div className="operator-console">
-      {/* Top Banner if machine selector has multiple assigned */}
-      {operatorMachines.length > 1 && (
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          {operatorMachines.map((m) => (
-            <button
-              key={m._id}
-              className={`btn ${selectedMachineId === m._id ? 'btn-primary' : ''}`}
-              onClick={() => setSelectedMachineId(m._id)}
-              style={{ fontSize: '13px', padding: '8px 16px' }}
-            >
-              {m.name} ({m.status})
-            </button>
-          ))}
+      {/* Station Selector Bar & Grant Access Header */}
+      <div className="panel" style={{ padding: '14px 18px', marginBottom: '16px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            Production Line:
+          </span>
+          <div style={{ display: 'flex', gap: '4px', background: 'var(--panel-2)', padding: '3px', borderRadius: '8px' }}>
+            {lines.map((l) => (
+              <button
+                key={l}
+                onClick={() => setSelectedLine(l)}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: selectedLine === l ? 'var(--accent)' : 'transparent',
+                  color: selectedLine === l ? '#000' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {l === 'ALL' ? `All (${displayMachines.length})` : l}
+              </button>
+            ))}
+          </div>
+
+          <span style={{ color: 'var(--steel)', margin: '0 4px' }}>|</span>
+
+          <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            Active Station:
+          </label>
+          <select
+            value={selectedMachineId}
+            onChange={(e) => setSelectedMachineId(e.target.value)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '6px',
+              background: 'var(--panel-2)',
+              color: 'var(--text)',
+              border: '1px solid var(--steel)',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {filteredMachines.map((m) => (
+              <option key={m._id} value={m._id}>
+                [{m.lineId}] {m.name} — {m.status}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {assignSuccess && (
+            <span style={{ fontSize: '12px', color: 'var(--green)', fontWeight: 600 }}>
+              ✓ All 16 Stations Assigned!
+            </span>
+          )}
+          <button
+            className="btn btn-secondary"
+            onClick={handleAssignAll}
+            disabled={assigning}
+            title="Assign all 16 plant stations across lines A, B, C, D to this operator account"
+            style={{ fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>⚡</span>
+            <span>{assigning ? 'Assigning...' : 'Assign All 16 Stations'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Top Quick Station Pills if multiple machines in line */}
+      {filteredMachines.length > 1 && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+          {filteredMachines.map((m) => {
+            const isSel = selectedMachineId === m._id;
+            const statusDot = m.status === 'RUNNING' ? 'var(--green)' : m.status === 'DOWN' ? 'var(--red)' : m.status === 'MAINTENANCE' ? '#8a7bff' : 'var(--amber)';
+            return (
+              <button
+                key={m._id}
+                className={`btn ${isSel ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setSelectedMachineId(m._id)}
+                style={{
+                  fontSize: '12px',
+                  padding: '7px 14px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusDot }}></span>
+                <span>{m.name}</span>
+                <span style={{ fontSize: '10px', opacity: 0.8, textTransform: 'uppercase' }}>({m.lineId})</span>
+              </button>
+            );
+          })}
         </div>
       )}
 

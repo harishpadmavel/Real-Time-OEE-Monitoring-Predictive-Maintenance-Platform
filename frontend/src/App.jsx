@@ -380,7 +380,7 @@ function MainApp() {
             <MyActivityPage />
           )}
 
-          {currentPage === 'profile' && <ProfilePage allUsers={allUsers} />}
+          {currentPage === 'profile' && <ProfilePage machines={machines} />}
 
         </main>
       </div>

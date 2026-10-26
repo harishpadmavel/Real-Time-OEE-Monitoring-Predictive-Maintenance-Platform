@@ -2,13 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-export const DEMO_USERS = [
-  { name: 'Shop Operator', email: 'operator@oee.local', role: 'OPERATOR', line: 'LINE-A', password: 'oper123' },
-  { name: 'Line Supervisor', email: 'supervisor@oee.local', role: 'SUPERVISOR', line: 'LINE-A', password: 'super123' },
-  { name: 'Maintenance Tech', email: 'maintenance@oee.local', role: 'MAINTENANCE', line: 'All Lines', password: 'maint123' },
-  { name: 'Plant Manager', email: 'manager@oee.local', role: 'MANAGER', line: 'All Lines', password: 'manager123' },
-  { name: 'Admin User', email: 'admin@oee.local', role: 'ADMIN', line: 'All Lines', password: 'admin123' },
-];
 
 export const ROLE_CONFIG = {
   OPERATOR: { color: 'var(--green)', label: 'Operator', access: 'Assigned machine(s) only' },
@@ -33,7 +26,35 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = !!user;
 
-  // Perform backend login to fetch a real JWT token
+  // Fetch current user profile with assigned machines from backend
+  const refreshUser = async (authToken = token) => {
+    const t = authToken || localStorage.getItem('oee_token');
+    if (!t) return;
+    try {
+      const res = await fetch('/api/users/me', {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      if (res.ok) {
+        const uData = await res.json();
+        const mappedUser = {
+          id: uData._id || uData.id,
+          _id: uData._id || uData.id,
+          name: uData.name,
+          email: uData.email,
+          role: uData.role,
+          assignedLineId: uData.assignedLineId,
+          assignedMachines: uData.assignedMachines || [],
+        };
+        setUser(mappedUser);
+        localStorage.setItem('oee_user', JSON.stringify(mappedUser));
+        return mappedUser;
+      }
+    } catch (err) {
+      console.warn('Profile refresh fallback:', err.message);
+    }
+  };
+
+  // Perform backend login to fetch a real JWT token & populated user
   const authenticateWithBackend = async (demoUser) => {
     try {
       const res = await fetch('/api/auth/login', {
@@ -45,11 +66,66 @@ export function AuthProvider({ children }) {
         const data = await res.json();
         setToken(data.token);
         localStorage.setItem('oee_token', data.token);
+        if (data.user) {
+          const userObj = {
+            id: data.user.id || data.user._id,
+            _id: data.user.id || data.user._id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role,
+            assignedLineId: data.user.assignedLineId,
+            assignedMachines: data.user.assignedMachines || [],
+          };
+          setUser(userObj);
+          localStorage.setItem('oee_user', JSON.stringify(userObj));
+        }
       }
     } catch (err) {
       console.warn('Backend login fallback:', err.message);
     }
   };
+
+  // Assign machines to current user
+  const assignMachines = async (machineIds = [], all = false) => {
+    const t = token || localStorage.getItem('oee_token');
+    try {
+      const res = await fetch('/api/users/assign-machine', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(t ? { Authorization: `Bearer ${t}` } : {}),
+        },
+        body: JSON.stringify({ machineIds, all }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          const mapped = {
+            id: data.user._id || data.user.id,
+            _id: data.user._id || data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            role: data.user.role,
+            assignedLineId: data.user.assignedLineId,
+            assignedMachines: data.user.assignedMachines || [],
+          };
+          setUser(mapped);
+          localStorage.setItem('oee_user', JSON.stringify(mapped));
+          return mapped;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to assign machines:', err);
+    }
+  };
+
+  // Auto-refresh profile on mount or token change
+  useEffect(() => {
+    const t = localStorage.getItem('oee_token');
+    if (t) {
+      refreshUser(t);
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -57,22 +133,12 @@ export function AuthProvider({ children }) {
     }
   }, [user]);
 
-  // Login with email + password — checks demo users first, then real backend
+  // Login with email + password — authenticates against the real backend only
   const loginWithCredentials = async (email, password) => {
     setLoginError('');
     const trimEmail = email.trim().toLowerCase();
 
-    // Match against demo users first
-    const demoMatch = DEMO_USERS.find(
-      (u) => u.email.toLowerCase() === trimEmail && u.password === password
-    );
-    if (demoMatch) {
-      setUser(demoMatch);
-      await authenticateWithBackend(demoMatch);
-      return;
-    }
-
-    // Fall through to real backend
+    // Authenticate against real backend
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -87,10 +153,19 @@ export function AuthProvider({ children }) {
         setUser(userObj);
         localStorage.setItem('oee_user', JSON.stringify(userObj));
       } else {
-        throw new Error(data.message || 'Invalid email or password.');
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+          throw new Error('Backend server is offline. Please make sure the backend API (port 5001) and MongoDB are running.');
+        }
+        if (res.status === 401) {
+          throw new Error(data.message || 'Invalid email or password.');
+        }
+        throw new Error(data.message || `Server error (${res.status}). Please check backend service.`);
       }
     } catch (err) {
-      const msg = err.message || 'Login failed. Please try again.';
+      let msg = err.message || 'Login failed. Please try again.';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+        msg = 'Cannot connect to server. Please verify the backend is running on port 5001 and MongoDB is active.';
+      }
       setLoginError(msg);
       throw new Error(msg);
     }
@@ -107,14 +182,74 @@ export function AuthProvider({ children }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 502 || res.status === 503 || res.status === 504) {
+          throw new Error('Backend server is offline. Please make sure the backend API (port 5001) is running.');
+        }
         throw new Error(data.message || 'Registration failed.');
+      }
+      if (data.token && data.user) {
+        setToken(data.token);
+        localStorage.setItem('oee_token', data.token);
+        const userObj = {
+          id: data.user.id || data.user._id,
+          _id: data.user.id || data.user._id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role,
+          assignedLineId: data.user.assignedLineId,
+          assignedMachines: data.user.assignedMachines || [],
+        };
+        setUser(userObj);
+        localStorage.setItem('oee_user', JSON.stringify(userObj));
       }
       return data;
     } catch (err) {
-      const msg = err.message || 'Registration failed. Please try again.';
+      let msg = err.message || 'Registration failed. Please try again.';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+        msg = 'Cannot connect to server. Please verify the backend is running on port 5001.';
+      }
       setLoginError(msg);
       throw new Error(msg);
     }
+  };
+
+  // Update user profile (name, email, assignedLineId, passwords)
+  const updateUserProfile = async ({ name, email, assignedLineId, currentPassword, newPassword }) => {
+    const t = token || localStorage.getItem('oee_token');
+    if (!t) throw new Error('Not authenticated.');
+
+    const res = await fetch('/api/users/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${t}`,
+      },
+      body: JSON.stringify({ name, email, assignedLineId, currentPassword, newPassword }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to update profile.');
+    }
+
+    if (data.token) {
+      setToken(data.token);
+      localStorage.setItem('oee_token', data.token);
+    }
+    if (data.user) {
+      const userObj = {
+        id: data.user.id || data.user._id,
+        _id: data.user.id || data.user._id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        assignedLineId: data.user.assignedLineId,
+        assignedMachines: data.user.assignedMachines || [],
+      };
+      setUser(userObj);
+      localStorage.setItem('oee_user', JSON.stringify(userObj));
+    }
+    return data;
   };
 
   // Logout — clears all auth state and storage
@@ -126,14 +261,6 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('oee_token');
   };
 
-  const switchDemoUser = (role) => {
-    const target = DEMO_USERS.find((u) => u.role === role);
-    if (target) {
-      setUser(target);
-      authenticateWithBackend(target);
-    }
-  };
-
   const hasRole = (...roles) => {
     return user && roles.includes(user.role);
   };
@@ -141,8 +268,8 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, token, isAuthenticated,
-      loginWithCredentials, registerUser, logout, loginError,
-      switchDemoUser, hasRole, DEMO_USERS, ROLE_CONFIG,
+      loginWithCredentials, registerUser, updateUserProfile, logout, loginError,
+      hasRole, refreshUser, assignMachines, ROLE_CONFIG,
     }}>
       {children}
     </AuthContext.Provider>

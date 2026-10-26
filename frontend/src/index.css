@@ -1122,6 +1122,186 @@ table.data-table tr:last-child td {
   box-shadow: 0 0 0 1px var(--amber) inset;
 }
 
+/* Profile Edit UI */
+.profile-edit-header-action {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(79, 195, 217, 0.12);
+  border: 1px solid rgba(79, 195, 217, 0.35);
+  color: var(--cyan);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.profile-edit-btn:hover {
+  background: var(--cyan);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(79, 195, 217, 0.35);
+  transform: translateY(-1px);
+}
+.profile-edit-btn.active {
+  background: var(--panel-2);
+  border-color: var(--steel);
+  color: var(--text-muted);
+}
+.profile-edit-btn.active:hover {
+  color: var(--text);
+  border-color: var(--steel-bright);
+}
+
+.profile-tab-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--steel);
+  padding-bottom: 2px;
+}
+
+.profile-tab-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  margin-bottom: -1px;
+}
+.profile-tab-item:hover {
+  color: var(--text);
+}
+.profile-tab-item.active {
+  color: var(--cyan);
+  border-bottom-color: var(--cyan);
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+@media (max-width: 720px) {
+  .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-section-card {
+  background: var(--panel-2);
+  border: 1px solid var(--steel);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.profile-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--steel);
+}
+
+.profile-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.profile-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--steel);
+  justify-content: flex-end;
+}
+
+.profile-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: var(--cyan);
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.profile-save-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(79, 195, 217, 0.4);
+  transform: translateY(-1px);
+}
+.profile-save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profile-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--steel);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.profile-cancel-btn:hover {
+  color: var(--text);
+  border-color: var(--steel-bright);
+  background: var(--panel-hover);
+}
+
+.profile-machine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--steel);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
 /* Toast */
 .toast-container {
   position: fixed;
@@ -1555,6 +1735,15 @@ footer b {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.login-demo-grid > div:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(2px);
 }
 .login-demo-grid code {
   background: var(--panel-2);
