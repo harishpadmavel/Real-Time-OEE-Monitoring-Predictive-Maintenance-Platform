@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
+const path = require("path");
+const fs = require("fs");
 const { Server } = require("socket.io");
 
 const connectDB = require("./config/db");
@@ -60,14 +62,12 @@ app.use("/api/handover", handoverRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/seed", seedRoutes);
 
-const path = require("path");
-const fs = require("fs");
-
 // Serve static frontend build if present (e.g. Render full-stack deployment)
 const frontendDist = path.join(__dirname, "../frontend/dist");
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
-  app.get("*", (req, res, next) => {
+  // SPA catch-all: serve index.html for non-API routes
+  app.use((req, res, next) => {
     if (req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
       return next();
     }
