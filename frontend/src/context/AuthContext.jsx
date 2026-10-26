@@ -40,13 +40,19 @@ export const ROLE_CONFIG = {
   },
 };
 
-// Centralized backend request helper
+// All API requests go directly to the Render backend.
 async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, options);
-  return response;
+  const url = `${API_URL}${path}`;
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+    },
+  });
 }
 
-// Normalize backend user data
+// Normalize user objects returned by the backend.
 function mapUser(data) {
   return {
     ...data,
@@ -58,17 +64,13 @@ function mapUser(data) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('oee_user');
-
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        localStorage.removeItem('oee_user');
-      }
+    try {
+      const saved = localStorage.getItem('oee_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      localStorage.removeItem('oee_user');
+      return null;
     }
-
-    return null;
   });
 
   const [token, setToken] = useState(
@@ -79,12 +81,29 @@ export function AuthProvider({ children }) {
 
   const isAuthenticated = Boolean(user);
 
-  // Fetch the current user's profile
+  // Save authenticated user data.
+  const saveSession = (userData, authToken) => {
+    const normalizedUser = mapUser(userData);
+
+    setUser(normalizedUser);
+    setToken(authToken);
+
+    localStorage.setItem(
+      'oee_user',
+      JSON.stringify(normalizedUser)
+    );
+
+    localStorage.setItem('oee_token', authToken);
+
+    return normalizedUser;
+  };
+
+  // Refresh the logged-in user's profile.
   const refreshUser = async (authToken = token) => {
     const currentToken =
       authToken || localStorage.getItem('oee_token');
 
-    if (!currentToken) return;
+    if (!currentToken) return null;
 
     try {
       const response = await apiRequest('/api/users/me', {
@@ -93,12 +112,19 @@ export function AuthProvider({ children }) {
         },
       });
 
-      if (!response.ok) return;
+      if (!response.ok) {
+        console.warn(
+          'Profile refresh failed:',
+          response.status
+        );
+        return null;
+      }
 
       const data = await response.json();
       const userData = mapUser(data.user || data);
 
       setUser(userData);
+
       localStorage.setItem(
         'oee_user',
         JSON.stringify(userData)
@@ -106,71 +132,89 @@ export function AuthProvider({ children }) {
 
       return userData;
     } catch (error) {
-      console.error('Profile refresh failed:', error.message);
+      console.error(
+        'Profile refresh failed:',
+        error.message
+      );
+      return null;
     }
   };
 
-  // Login with email and password
+  // Login using email and password.
   const loginWithCredentials = async (email, password) => {
     setLoginError('');
 
     const normalizedEmail = email.trim().toLowerCase();
 
     try {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password,
-        }),
-      });
+      const response = await apiRequest(
+        '/api/auth/login',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+            password,
+          }),
+        }
+      );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error(
+            data.message || 'Invalid email or password.'
+          );
+        }
+
+        if (response.status === 404) {
+          throw new Error(
+            'Login route not found on the Render backend.'
+          );
+        }
+
+        if (response.status === 405) {
+          throw new Error(
+            'The backend rejected the login method. Check the deployed API route.'
+          );
+        }
+
         throw new Error(
           data.message ||
             `Login failed with status ${response.status}.`
         );
       }
 
-      if (!data.token) {
+      if (!data.token || !data.user) {
         throw new Error(
-          'The backend did not return an authentication token.'
+          'The backend login response must contain a user and token.'
         );
       }
 
-      const userData = data.user
-        ? mapUser(data.user)
-        : {
-            email: normalizedEmail,
-            name: normalizedEmail,
-            role: 'OPERATOR',
-          };
-
-      setToken(data.token);
-      setUser(userData);
-
-      localStorage.setItem('oee_token', data.token);
-      localStorage.setItem(
-        'oee_user',
-        JSON.stringify(userData)
-      );
+      saveSession(data.user, data.token);
 
       return data;
     } catch (error) {
-      const message =
+      let message =
         error.message || 'Login failed. Please try again.';
 
+      if (
+        error instanceof TypeError ||
+        message.includes('Failed to fetch')
+      ) {
+        message =
+          'Cannot reach Render. Check the backend service and CORS settings.';
+      }
+
       setLoginError(message);
-      throw error;
+      throw new Error(message);
     }
   };
 
-  // Register a new account
+  // Register a new account.
   const registerUser = async ({
     name,
     email,
@@ -180,18 +224,21 @@ export function AuthProvider({ children }) {
     setLoginError('');
 
     try {
-      const response = await apiRequest('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          email: email.trim().toLowerCase(),
-          password,
-          role,
-        }),
-      });
+      const response = await apiRequest(
+        '/api/auth/register',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            email: email.trim().toLowerCase(),
+            password,
+            role,
+          }),
+        }
+      );
 
       const data = await response.json().catch(() => ({}));
 
@@ -203,29 +250,37 @@ export function AuthProvider({ children }) {
       }
 
       if (data.token && data.user) {
-        const userData = mapUser(data.user);
-
-        setToken(data.token);
-        setUser(userData);
-
-        localStorage.setItem('oee_token', data.token);
-        localStorage.setItem(
-          'oee_user',
-          JSON.stringify(userData)
-        );
+        saveSession(data.user, data.token);
       }
 
       return data;
     } catch (error) {
-      setLoginError(error.message || 'Registration failed.');
+      setLoginError(
+        error.message || 'Registration failed.'
+      );
       throw error;
     }
   };
 
-  // Assign machines to a user
-  const assignMachines = async (machineIds = [], all = false) => {
+  // Authenticate a demo account through the backend.
+  const authenticateWithBackend = async (demoUser) => {
+    return loginWithCredentials(
+      demoUser.email,
+      demoUser.password
+    );
+  };
+
+  // Assign machines to the current user.
+  const assignMachines = async (
+    machineIds = [],
+    all = false
+  ) => {
     const currentToken =
       token || localStorage.getItem('oee_token');
+
+    if (!currentToken) {
+      throw new Error('Please sign in first.');
+    }
 
     const response = await apiRequest(
       '/api/users/assign-machine',
@@ -233,11 +288,12 @@ export function AuthProvider({ children }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(currentToken
-            ? { Authorization: `Bearer ${currentToken}` }
-            : {}),
+          Authorization: `Bearer ${currentToken}`,
         },
-        body: JSON.stringify({ machineIds, all }),
+        body: JSON.stringify({
+          machineIds,
+          all,
+        }),
       }
     );
 
@@ -254,6 +310,7 @@ export function AuthProvider({ children }) {
       const userData = mapUser(data.user);
 
       setUser(userData);
+
       localStorage.setItem(
         'oee_user',
         JSON.stringify(userData)
@@ -265,25 +322,18 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  // Authenticate a demo account against the backend
-  const authenticateWithBackend = async (demoUser) => {
-    return loginWithCredentials(
-      demoUser.email,
-      demoUser.password
-    );
-  };
-
-  // Restore the user's profile when the application starts
+  // Restore the profile on application startup.
   useEffect(() => {
     const savedToken = localStorage.getItem('oee_token');
 
     if (savedToken) {
       refreshUser(savedToken);
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the stored user synchronized
+  // Keep local storage synchronized with user state.
   useEffect(() => {
     if (user) {
       localStorage.setItem(
@@ -293,7 +343,7 @@ export function AuthProvider({ children }) {
     }
   }, [user]);
 
-  // Update the current user's profile
+  // Update the user's profile.
   const updateUserProfile = async ({
     name,
     email,
@@ -308,20 +358,23 @@ export function AuthProvider({ children }) {
       throw new Error('Please sign in again.');
     }
 
-    const response = await apiRequest('/api/users/profile', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${currentToken}`,
-      },
-      body: JSON.stringify({
-        name,
-        email,
-        assignedLineId,
-        currentPassword,
-        newPassword,
-      }),
-    });
+    const response = await apiRequest(
+      '/api/users/profile',
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentToken}`,
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          assignedLineId,
+          currentPassword,
+          newPassword,
+        }),
+      }
+    );
 
     const data = await response.json().catch(() => ({}));
 
@@ -332,15 +385,13 @@ export function AuthProvider({ children }) {
       );
     }
 
-    if (data.token) {
-      setToken(data.token);
-      localStorage.setItem('oee_token', data.token);
-    }
-
-    if (data.user) {
+    if (data.token && data.user) {
+      saveSession(data.user, data.token);
+    } else if (data.user) {
       const userData = mapUser(data.user);
 
       setUser(userData);
+
       localStorage.setItem(
         'oee_user',
         JSON.stringify(userData)
@@ -350,7 +401,7 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  // Sign out
+  // Sign out.
   const logout = () => {
     setUser(null);
     setToken('');
@@ -360,7 +411,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('oee_token');
   };
 
-  // Check the current user's role
+  // Check the current user's role.
   const hasRole = (...roles) => {
     return Boolean(user && roles.includes(user.role));
   };
