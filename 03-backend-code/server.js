@@ -5,6 +5,7 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const { Server } = require("socket.io");
+const mongoose = require("mongoose");
 
 const connectDB = require("./config/db");
 const registerSocketHandlers = require("./sockets/socketHandler");
@@ -40,13 +41,16 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get("/api/health", (req, res) =>
+app.get("/api/health", (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
   res.json({
     status: "ok",
+    database: isConnected ? "connected" : "disconnected",
+    hasMongoUri: Boolean(process.env.MONGO_URI || process.env.MONGO_URL),
     service: "OEE Monitoring & Predictive Maintenance Platform API",
     time: new Date(),
-  })
-);
+  });
+});
 
 // Feature routes
 app.use("/api/auth", authRoutes);
@@ -83,13 +87,72 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-// Only connect to Mongo + start listening when run directly
+// Prevent uncaught promise rejections from killing the process
+process.on("unhandledRejection", (reason) => {
+  console.warn("⚠️ Unhandled Promise Rejection:", reason && reason.message ? reason.message : reason);
+});
+
+// Async database initializer with auto-seed and reconnection logic
+async function initDatabase() {
+  try {
+    await connectDB();
+    console.log("✅ Database connected successfully");
+
+    // Check if initial seed is needed for a brand new MongoDB instance
+    try {
+      const User = require("./models/User");
+      const userCount = await User.countDocuments();
+      if (userCount === 0) {
+        console.log("🌱 Fresh database detected. Auto-seeding initial machines and users...");
+        const Machine = require("./models/Machine");
+        const defaultMachines = [
+          { name: "CNC Machining Center A1", type: "CNC", lineId: "LINE-A", idealCycleTimeSeconds: 25, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 680, defectiveUnits: 12, totalRunTimeMinutes: 410, totalDowntimeMinutes: 28 } },
+          { name: "Stamping Press A2", type: "Press", lineId: "LINE-A", idealCycleTimeSeconds: 15, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 1120, defectiveUnits: 34, totalRunTimeMinutes: 388, totalDowntimeMinutes: 52 } },
+          { name: "Robotic Welding Cell A3", type: "Welding", lineId: "LINE-A", idealCycleTimeSeconds: 40, plannedProductionMinutesPerShift: 480, status: "DOWN", currentShift: { goodUnits: 385, defectiveUnits: 18, totalRunTimeMinutes: 320, totalDowntimeMinutes: 110 } },
+          { name: "Assembly Station A4", type: "Assembly", lineId: "LINE-A", idealCycleTimeSeconds: 60, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 295, defectiveUnits: 6, totalRunTimeMinutes: 412, totalDowntimeMinutes: 42 } },
+          { name: "Lathe Machine B1", type: "Lathe", lineId: "LINE-B", idealCycleTimeSeconds: 35, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 510, defectiveUnits: 9, totalRunTimeMinutes: 445, totalDowntimeMinutes: 20 } },
+          { name: "Milling Center B2", type: "Milling", lineId: "LINE-B", idealCycleTimeSeconds: 45, plannedProductionMinutesPerShift: 480, status: "MAINTENANCE", currentShift: { goodUnits: 210, defectiveUnits: 5, totalRunTimeMinutes: 200, totalDowntimeMinutes: 120 } },
+          { name: "Grinding Machine B3", type: "CNC", lineId: "LINE-B", idealCycleTimeSeconds: 20, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 840, defectiveUnits: 22, totalRunTimeMinutes: 430, totalDowntimeMinutes: 18 } },
+          { name: "Quality Inspection B4", type: "Assembly", lineId: "LINE-B", idealCycleTimeSeconds: 30, plannedProductionMinutesPerShift: 480, status: "IDLE", currentShift: { goodUnits: 620, defectiveUnits: 14, totalRunTimeMinutes: 350, totalDowntimeMinutes: 60 } },
+          { name: "E-Coat Paint System C1", type: "Painting", lineId: "LINE-C", idealCycleTimeSeconds: 90, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 188, defectiveUnits: 9, totalRunTimeMinutes: 395, totalDowntimeMinutes: 65 } },
+          { name: "Powder Coating Unit C2", type: "Painting", lineId: "LINE-C", idealCycleTimeSeconds: 75, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 240, defectiveUnits: 7, totalRunTimeMinutes: 420, totalDowntimeMinutes: 35 } },
+          { name: "Robotic Paint Arm C3", type: "Robot", lineId: "LINE-C", idealCycleTimeSeconds: 55, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 480, defectiveUnits: 11, totalRunTimeMinutes: 460, totalDowntimeMinutes: 10 } },
+          { name: "Curing Oven C4", type: "Other", lineId: "LINE-C", idealCycleTimeSeconds: 120, plannedProductionMinutesPerShift: 480, status: "IDLE", currentShift: { goodUnits: 140, defectiveUnits: 4, totalRunTimeMinutes: 290, totalDowntimeMinutes: 90 } },
+          { name: "Conveyor Assembly D1", type: "Conveyor", lineId: "LINE-D", idealCycleTimeSeconds: 50, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 550, defectiveUnits: 15, totalRunTimeMinutes: 440, totalDowntimeMinutes: 22 } },
+          { name: "Torque Robot D2", type: "Robot", lineId: "LINE-D", idealCycleTimeSeconds: 22, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 960, defectiveUnits: 28, totalRunTimeMinutes: 455, totalDowntimeMinutes: 12 } },
+          { name: "Final QC Station D3", type: "Assembly", lineId: "LINE-D", idealCycleTimeSeconds: 70, plannedProductionMinutesPerShift: 480, status: "DOWN", currentShift: { goodUnits: 320, defectiveUnits: 20, totalRunTimeMinutes: 360, totalDowntimeMinutes: 95 } },
+          { name: "Packaging Robot D4", type: "Robot", lineId: "LINE-D", idealCycleTimeSeconds: 18, plannedProductionMinutesPerShift: 480, status: "RUNNING", currentShift: { goodUnits: 1100, defectiveUnits: 18, totalRunTimeMinutes: 465, totalDowntimeMinutes: 8 } },
+        ];
+        const created = await Machine.insertMany(defaultMachines);
+        const allIds = created.map((m) => m._id);
+        await User.create([
+          { name: "Admin User", email: "admin@oee.local", password: "admin123", role: "ADMIN" },
+          { name: "Plant Manager", email: "manager@oee.local", password: "manager123", role: "MANAGER" },
+          { name: "Line Supervisor A", email: "supervisor@oee.local", password: "super123", role: "SUPERVISOR", assignedLineId: "LINE-A" },
+          { name: "Line Supervisor B", email: "supervisorb@oee.local", password: "super123", role: "SUPERVISOR", assignedLineId: "LINE-B" },
+          { name: "Maintenance Tech", email: "maintenance@oee.local", password: "maint123", role: "MAINTENANCE" },
+          { name: "Shop Operator (All Access)", email: "operator@oee.local", password: "oper123", role: "OPERATOR", assignedLineId: "LINE-A", assignedMachines: allIds },
+        ]);
+        console.log("🌱 Auto-seeding completed with default demo accounts.");
+      }
+    } catch (seedErr) {
+      console.warn("Auto-seed notice:", seedErr.message);
+    }
+
+    startSimulator(io);
+  } catch (err) {
+    console.error("⚠️ MongoDB connection error:", err.message);
+    console.warn("⚠️ Server is running and frontend is active. To enable database persistence, please ensure MONGO_URI is set in your Render Environment Variables and Atlas Network Access includes 0.0.0.0/0.");
+    // Retry connection after 15 seconds
+    setTimeout(initDatabase, 15000);
+  }
+}
+
+// Start HTTP server immediately so Render passes port detection and health checks
 if (require.main === module) {
-  connectDB().then(() => {
-    server.listen(PORT, () => {
-      console.log(`🚀 OEE Server running on http://localhost:${PORT}`);
-      startSimulator(io);
-    });
+  server.listen(PORT, () => {
+    console.log(`🚀 OEE Server running on http://localhost:${PORT}`);
+    initDatabase();
   });
 }
 
