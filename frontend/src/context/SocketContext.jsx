@@ -17,18 +17,27 @@ export function SocketProvider({ children }) {
   };
 
   useEffect(() => {
-    // Connect to backend (proxied via Vite or port 5001 directly)
-    const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin;
+    // Connect to backend (environment variable, localhost:5001 for dev, or current origin)
+    const socketUrl =
+      import.meta.env.VITE_SOCKET_URL ||
+      (window.location.hostname === 'localhost' ? 'http://localhost:5001' : window.location.origin);
+
     const s = io(socketUrl, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      timeout: 5000,
     });
 
     s.on('connect', () => {
       console.log('⚡ Socket.IO connected:', s.id);
       setIsConnected(true);
       addToast('Connected to Shop Floor Gateway', 'info');
+    });
+
+    s.on('connect_error', (err) => {
+      // Graceful fallback for serverless hosting where WebSockets may not be active
+      console.warn('Socket.IO connection notice (WebSockets may be unavailable on serverless host):', err.message);
     });
 
     s.on('disconnect', () => {
