@@ -40,6 +40,22 @@ export const ROLE_CONFIG = {
   },
 };
 
+// Centralized backend request helper
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_URL}${path}`, options);
+  return response;
+}
+
+// Normalize backend user data
+function mapUser(data) {
+  return {
+    ...data,
+    id: data.id || data._id,
+    _id: data._id || data.id,
+    assignedMachines: data.assignedMachines || [],
+  };
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('oee_user');
@@ -61,26 +77,9 @@ export function AuthProvider({ children }) {
 
   const [loginError, setLoginError] = useState('');
 
-  const isAuthenticated = !!user;
+  const isAuthenticated = Boolean(user);
 
-  // Common API request helper
-  const apiRequest = async (path, options = {}) => {
-    const response = await fetch(`${API_URL}${path}`, options);
-    return response;
-  };
-
-  // Convert backend user data into the frontend user format
-  const mapUser = (data) => ({
-    id: data.id || data._id,
-    _id: data._id || data.id,
-    name: data.name,
-    email: data.email,
-    role: data.role,
-    assignedLineId: data.assignedLineId,
-    assignedMachines: data.assignedMachines || [],
-  });
-
-  // Refresh the current user's profile
+  // Fetch the current user's profile
   const refreshUser = async (authToken = token) => {
     const currentToken =
       authToken || localStorage.getItem('oee_token');
@@ -94,127 +93,22 @@ export function AuthProvider({ children }) {
         },
       });
 
-      if (!response.ok) {
-        return;
-      }
+      if (!response.ok) return;
 
       const data = await response.json();
       const userData = mapUser(data.user || data);
 
       setUser(userData);
-      localStorage.setItem('oee_user', JSON.stringify(userData));
+      localStorage.setItem(
+        'oee_user',
+        JSON.stringify(userData)
+      );
 
       return userData;
     } catch (error) {
-      console.warn('Profile refresh failed:', error.message);
+      console.error('Profile refresh failed:', error.message);
     }
   };
-
-  // Authenticate a demo user against the backend
-  const authenticateWithBackend = async (demoUser) => {
-    try {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: demoUser.email,
-          password: demoUser.password,
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || `Login failed (${response.status}).`
-        );
-      }
-
-      if (!data.token) {
-        throw new Error('The backend did not return an authentication token.');
-      }
-
-      setToken(data.token);
-      localStorage.setItem('oee_token', data.token);
-
-      if (data.user) {
-        const userData = mapUser(data.user);
-
-        setUser(userData);
-        localStorage.setItem('oee_user', JSON.stringify(userData));
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Demo authentication failed:', error.message);
-      throw error;
-    }
-  };
-
-  // Assign machines to the current user
-  const assignMachines = async (machineIds = [], all = false) => {
-    const currentToken =
-      token || localStorage.getItem('oee_token');
-
-    try {
-      const response = await apiRequest(
-        '/api/users/assign-machine',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(currentToken
-              ? { Authorization: `Bearer ${currentToken}` }
-              : {}),
-          },
-          body: JSON.stringify({ machineIds, all }),
-        }
-      );
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          data.message ||
-            `Machine assignment failed (${response.status}).`
-        );
-      }
-
-      if (data.user) {
-        const userData = mapUser(data.user);
-
-        setUser(userData);
-        localStorage.setItem('oee_user', JSON.stringify(userData));
-
-        return userData;
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Failed to assign machines:', error.message);
-      throw error;
-    }
-  };
-
-  // Refresh the user profile when the provider mounts
-  useEffect(() => {
-    const savedToken = localStorage.getItem('oee_token');
-
-    if (savedToken) {
-      refreshUser(savedToken);
-    }
-    // Run only when the provider mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Keep user data synchronized with local storage
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('oee_user', JSON.stringify(user));
-    }
-  }, [user]);
 
   // Login with email and password
   const loginWithCredentials = async (email, password) => {
@@ -237,36 +131,17 @@ export function AuthProvider({ children }) {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        if (
-          response.status === 502 ||
-          response.status === 503 ||
-          response.status === 504
-        ) {
-          throw new Error(
-            'The backend service is temporarily unavailable. Please try again.'
-          );
-        }
-
-        if (response.status === 401) {
-          throw new Error(
-            data.message || 'Invalid email or password.'
-          );
-        }
-
         throw new Error(
           data.message ||
-            `Login failed (${response.status}). Check the backend API route.`
+            `Login failed with status ${response.status}.`
         );
       }
 
       if (!data.token) {
         throw new Error(
-          'Login response did not contain an authentication token.'
+          'The backend did not return an authentication token.'
         );
       }
-
-      setToken(data.token);
-      localStorage.setItem('oee_token', data.token);
 
       const userData = data.user
         ? mapUser(data.user)
@@ -276,24 +151,22 @@ export function AuthProvider({ children }) {
             role: 'OPERATOR',
           };
 
+      setToken(data.token);
       setUser(userData);
-      localStorage.setItem('oee_user', JSON.stringify(userData));
+
+      localStorage.setItem('oee_token', data.token);
+      localStorage.setItem(
+        'oee_user',
+        JSON.stringify(userData)
+      );
 
       return data;
     } catch (error) {
-      let message = error.message || 'Login failed. Please try again.';
-
-      if (
-        message.includes('Failed to fetch') ||
-        message.includes('NetworkError') ||
-        message.includes('Load failed')
-      ) {
-        message =
-          'Cannot connect to the backend. Check the Render service and its CORS configuration.';
-      }
+      const message =
+        error.message || 'Login failed. Please try again.';
 
       setLoginError(message);
-      throw new Error(message);
+      throw error;
     }
   };
 
@@ -325,38 +198,100 @@ export function AuthProvider({ children }) {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            `Registration failed (${response.status}).`
+            `Registration failed with status ${response.status}.`
         );
       }
 
       if (data.token && data.user) {
-        setToken(data.token);
-        localStorage.setItem('oee_token', data.token);
-
         const userData = mapUser(data.user);
 
+        setToken(data.token);
         setUser(userData);
-        localStorage.setItem('oee_user', JSON.stringify(userData));
+
+        localStorage.setItem('oee_token', data.token);
+        localStorage.setItem(
+          'oee_user',
+          JSON.stringify(userData)
+        );
       }
 
       return data;
     } catch (error) {
-      let message =
-        error.message || 'Registration failed. Please try again.';
-
-      if (
-        message.includes('Failed to fetch') ||
-        message.includes('NetworkError') ||
-        message.includes('Load failed')
-      ) {
-        message =
-          'Cannot connect to the backend. Check the Render service and its CORS configuration.';
-      }
-
-      setLoginError(message);
-      throw new Error(message);
+      setLoginError(error.message || 'Registration failed.');
+      throw error;
     }
   };
+
+  // Assign machines to a user
+  const assignMachines = async (machineIds = [], all = false) => {
+    const currentToken =
+      token || localStorage.getItem('oee_token');
+
+    const response = await apiRequest(
+      '/api/users/assign-machine',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(currentToken
+            ? { Authorization: `Bearer ${currentToken}` }
+            : {}),
+        },
+        body: JSON.stringify({ machineIds, all }),
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          `Machine assignment failed (${response.status}).`
+      );
+    }
+
+    if (data.user) {
+      const userData = mapUser(data.user);
+
+      setUser(userData);
+      localStorage.setItem(
+        'oee_user',
+        JSON.stringify(userData)
+      );
+
+      return userData;
+    }
+
+    return data;
+  };
+
+  // Authenticate a demo account against the backend
+  const authenticateWithBackend = async (demoUser) => {
+    return loginWithCredentials(
+      demoUser.email,
+      demoUser.password
+    );
+  };
+
+  // Restore the user's profile when the application starts
+  useEffect(() => {
+    const savedToken = localStorage.getItem('oee_token');
+
+    if (savedToken) {
+      refreshUser(savedToken);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the stored user synchronized
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(
+        'oee_user',
+        JSON.stringify(user)
+      );
+    }
+  }, [user]);
 
   // Update the current user's profile
   const updateUserProfile = async ({
@@ -370,7 +305,7 @@ export function AuthProvider({ children }) {
       token || localStorage.getItem('oee_token');
 
     if (!currentToken) {
-      throw new Error('Not authenticated. Please sign in again.');
+      throw new Error('Please sign in again.');
     }
 
     const response = await apiRequest('/api/users/profile', {
@@ -406,13 +341,16 @@ export function AuthProvider({ children }) {
       const userData = mapUser(data.user);
 
       setUser(userData);
-      localStorage.setItem('oee_user', JSON.stringify(userData));
+      localStorage.setItem(
+        'oee_user',
+        JSON.stringify(userData)
+      );
     }
 
     return data;
   };
 
-  // Log out and clear authentication data
+  // Sign out
   const logout = () => {
     setUser(null);
     setToken('');
@@ -422,9 +360,9 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('oee_token');
   };
 
-  // Check whether the current user has one of the specified roles
+  // Check the current user's role
   const hasRole = (...roles) => {
-    return user && roles.includes(user.role);
+    return Boolean(user && roles.includes(user.role));
   };
 
   return (
